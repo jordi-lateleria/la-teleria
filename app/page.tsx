@@ -1,12 +1,18 @@
+import Image from "next/image";
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
       <header className="border-b border-gray-200 py-6">
-        <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-3xl font-light text-center tracking-wider">
-            LA TELERIA
-          </h1>
+        <div className="max-w-7xl mx-auto px-4 flex justify-center">
+          <Image
+            src="/logo.png"
+            alt="La Teleria"
+            width={300}
+            height={60}
+            priority
+          />
         </div>
       </header>
 
