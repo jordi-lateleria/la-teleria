@@ -17,8 +17,8 @@ export interface CartItem {
 interface CartContextType {
   items: CartItem[]
   addToCart: (product: DbProduct, quantity: number, selectedVariants: Record<string, string>) => void
-  removeFromCart: (productId: string, variantId?: string) => void
-  updateQuantity: (productId: string, quantity: number, variantId?: string) => void
+  removeFromCart: (productId: string, selectedVariants?: Record<string, string>) => void
+  updateQuantity: (productId: string, quantity: number, selectedVariants?: Record<string, string>) => void
   clearCart: () => void
   totalItems: number
   totalPrice: number
@@ -89,24 +89,36 @@ export function CartProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  const removeFromCart = (productId: string, variantId?: string) => {
-    setItems(prevItems => prevItems.filter(item =>
-      !(item.productId === productId && item.variantId === variantId)
-    ))
+  const removeFromCart = (productId: string, selectedVariants?: Record<string, string>) => {
+    setItems(prevItems => {
+      const variantKey = selectedVariants
+        ? Object.entries(selectedVariants).sort().map(([k, v]) => `${k}:${v}`).join('|')
+        : ''
+      return prevItems.filter(item => {
+        const itemVariantKey = Object.entries(item.selectedVariants).sort().map(([k, v]) => `${k}:${v}`).join('|')
+        return !(item.productId === productId && itemVariantKey === variantKey)
+      })
+    })
   }
 
-  const updateQuantity = (productId: string, quantity: number, variantId?: string) => {
+  const updateQuantity = (productId: string, quantity: number, selectedVariants?: Record<string, string>) => {
     if (quantity <= 0) {
-      removeFromCart(productId, variantId)
+      removeFromCart(productId, selectedVariants)
       return
     }
 
-    setItems(prevItems => prevItems.map(item => {
-      if (item.productId === productId && item.variantId === variantId) {
-        return { ...item, quantity }
-      }
-      return item
-    }))
+    setItems(prevItems => {
+      const variantKey = selectedVariants
+        ? Object.entries(selectedVariants).sort().map(([k, v]) => `${k}:${v}`).join('|')
+        : ''
+      return prevItems.map(item => {
+        const itemVariantKey = Object.entries(item.selectedVariants).sort().map(([k, v]) => `${k}:${v}`).join('|')
+        if (item.productId === productId && itemVariantKey === variantKey) {
+          return { ...item, quantity }
+        }
+        return item
+      })
+    })
   }
 
   const clearCart = () => {
