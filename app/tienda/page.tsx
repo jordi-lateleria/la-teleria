@@ -1,9 +1,47 @@
+import { Suspense } from 'react'
 import Header from '@/components/Header'
-import ProductCard from '@/components/ProductCard'
-import CategoryFilter from '@/components/CategoryFilter'
-import { products } from '@/data/products'
+import TiendaContent from '@/components/TiendaContent'
+import prisma from '@/lib/prisma'
+import { DbProduct, DbCategory } from '@/types/database'
 
-export default function TiendaPage() {
+async function getProducts(): Promise<DbProduct[]> {
+  try {
+    const products = await prisma.product.findMany({
+      where: { active: true },
+      include: {
+        category: true,
+        images: {
+          orderBy: { order: 'asc' },
+          take: 1
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+    return JSON.parse(JSON.stringify(products))
+  } catch (error) {
+    console.error('Error fetching products:', error)
+    return []
+  }
+}
+
+async function getCategories(): Promise<DbCategory[]> {
+  try {
+    const categories = await prisma.category.findMany({
+      orderBy: { name: 'asc' }
+    })
+    return JSON.parse(JSON.stringify(categories))
+  } catch (error) {
+    console.error('Error fetching categories:', error)
+    return []
+  }
+}
+
+export default async function TiendaPage() {
+  const [products, categories] = await Promise.all([
+    getProducts(),
+    getCategories()
+  ])
+
   return (
     <div className="min-h-screen bg-white">
       <Header />
@@ -17,13 +55,29 @@ export default function TiendaPage() {
             Descubre nuestra colección de textiles premium para el hogar
           </p>
 
-          <CategoryFilter />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          <Suspense fallback={
+            <div className="text-center py-16">
+              <div className="animate-pulse">
+                <div className="flex flex-wrap justify-center gap-3 mb-12">
+                  {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                    <div key={i} className="h-10 w-24 bg-gray-200 rounded-full" />
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="space-y-4">
+                      <div className="aspect-square bg-gray-200 rounded-lg" />
+                      <div className="h-6 bg-gray-200 rounded w-3/4" />
+                      <div className="h-4 bg-gray-200 rounded w-1/2" />
+                      <div className="h-6 bg-gray-200 rounded w-1/4" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          }>
+            <TiendaContent products={products} categories={categories} />
+          </Suspense>
         </div>
       </section>
 
