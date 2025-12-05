@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import { useCart } from '@/context/CartContext'
 
@@ -36,11 +37,14 @@ const initialFormData: ShippingFormData = {
 }
 
 export default function CheckoutPage() {
-  const { items, totalPrice } = useCart()
+  const router = useRouter()
+  const { items, totalPrice, clearCart } = useCart()
   const [isHydrated, setIsHydrated] = useState(false)
   const [shippingData, setShippingData] = useState<ShippingFormData>(initialFormData)
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     setIsHydrated(true)
@@ -83,7 +87,6 @@ export default function CheckoutPage() {
     return undefined
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
     let isValid = true
@@ -97,6 +100,12 @@ export default function CheckoutPage() {
     })
 
     setErrors(newErrors)
+    // Mark all fields as touched
+    const allTouched: Record<string, boolean> = {}
+    Object.keys(shippingData).forEach((field) => {
+      allTouched[field] = true
+    })
+    setTouched(allTouched)
     return isValid
   }
 
@@ -132,9 +141,59 @@ export default function CheckoutPage() {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const isFormValid = (): boolean => {
     return Object.values(shippingData).every((value) => value.trim() !== '')
+  }
+
+  const handleSubmitOrder = async () => {
+    if (!validateForm()) {
+      return
+    }
+
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      const response = await fetch('/api/pedidos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shippingData,
+          items: items.map((item) => ({
+            productId: item.productId,
+            productName: item.productName,
+            productSlug: item.productSlug,
+            price: item.price,
+            quantity: item.quantity,
+            selectedVariants: item.selectedVariants,
+          })),
+          subtotal,
+          iva,
+          total,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al procesar el pedido')
+      }
+
+      // Clear the cart
+      clearCart()
+
+      // Redirect to confirmation page
+      router.push(`/checkout/confirmacion?orderNumber=${data.orderNumber}`)
+    } catch (error) {
+      console.error('Error submitting order:', error)
+      setSubmitError(
+        error instanceof Error ? error.message : 'Error al procesar el pedido. Por favor, inténtalo de nuevo.'
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (!isHydrated) {
@@ -407,34 +466,73 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-            <svg
-              className="w-12 h-12 mx-auto text-yellow-500 mb-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Proceso de pago en desarrollo
-            </h3>
-            <p className="text-gray-600 mb-4">
-              El sistema de pago está actualmente en desarrollo.
-              Por favor, vuelve pronto para completar tu compra.
-            </p>
-            <Link
-              href="/contacto"
-              className="inline-block text-gray-900 underline hover:no-underline"
-            >
-              Contactar para más información
-            </Link>
+          {/* Payment Method Section */}
+          <div className="bg-gray-50 rounded-lg p-6 mb-8">
+            <h2 className="text-lg font-medium text-gray-900 mb-6">Método de pago</h2>
+
+            <div className="border border-gray-300 rounded-lg p-4 bg-white">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-5 h-5 rounded-full border-2 border-gray-900 flex items-center justify-center">
+                  <div className="w-2.5 h-2.5 rounded-full bg-gray-900"></div>
+                </div>
+                <span className="font-medium text-gray-900">Transferencia bancaria</span>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 ml-8">
+                <p className="text-sm text-gray-600 mb-3">
+                  Realiza el pago mediante transferencia bancaria a la siguiente cuenta:
+                </p>
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm text-gray-500 mb-1">IBAN</p>
+                  <p className="font-mono text-lg font-medium text-gray-900 tracking-wider">
+                    ES12 3456 7890 1234 5678 9012
+                  </p>
+                </div>
+                <p className="text-sm text-gray-500 mt-3">
+                  Incluye tu número de pedido como concepto de la transferencia.
+                </p>
+              </div>
+            </div>
           </div>
+
+          {/* Submit Error Message */}
+          {submitError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-red-700">{submitError}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Confirm Order Button */}
+          <button
+            onClick={handleSubmitOrder}
+            disabled={isSubmitting || !isFormValid()}
+            className={`w-full py-4 rounded-lg font-medium text-lg transition-colors ${
+              isSubmitting || !isFormValid()
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-gray-900 text-white hover:bg-gray-800'
+            }`}
+          >
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Procesando...
+              </span>
+            ) : (
+              'Confirmar pedido'
+            )}
+          </button>
+
+          <p className="text-sm text-gray-500 text-center mt-4">
+            Al confirmar el pedido, aceptas nuestras condiciones de venta y política de privacidad.
+          </p>
         </div>
       </main>
     </>
