@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AdminLayoutWrapper from '../../components/AdminLayoutWrapper';
+import ImageUpload, { UploadedImage } from '../../components/ImageUpload';
 
 interface Category {
   id: string;
@@ -16,6 +17,7 @@ export default function NuevoProductoPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [images, setImages] = useState<UploadedImage[]>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -90,6 +92,11 @@ export default function NuevoProductoPage() {
           categoryId: formData.categoryId || null,
           stock: formData.stock,
           active: formData.active,
+          images: images.map((img, index) => ({
+            url: img.url,
+            alt: img.alt || null,
+            order: index,
+          })),
         }),
       });
 
@@ -186,6 +193,15 @@ export default function NuevoProductoPage() {
               rows={4}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent resize-none"
               placeholder="Descripcion detallada del producto"
+            />
+          </div>
+
+          {/* Images */}
+          <div className="md:col-span-2">
+            <ImageUpload
+              images={images}
+              onImagesChange={setImages}
+              maxImages={10}
             />
           </div>
 
