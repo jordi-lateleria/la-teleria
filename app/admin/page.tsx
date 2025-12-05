@@ -18,10 +18,21 @@ interface DashboardStats {
   categories: CategoryStats[];
 }
 
+interface SeedResult {
+  success: boolean;
+  message: string;
+  results?: { category: string; status: string; error?: string }[];
+  error?: string;
+  details?: string;
+  hint?: string;
+}
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSeedingCategories, setIsSeedingCategories] = useState(false);
+  const [seedResult, setSeedResult] = useState<SeedResult | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -41,6 +52,36 @@ export default function AdminDashboardPage() {
 
     fetchStats();
   }, []);
+
+  const handleSeedCategories = async () => {
+    setIsSeedingCategories(true);
+    setSeedResult(null);
+
+    try {
+      const response = await fetch('/api/admin/seed-categories', {
+        method: 'POST',
+      });
+      const data = await response.json();
+      setSeedResult(data);
+
+      // Refresh stats if seed was successful
+      if (data.success) {
+        const statsResponse = await fetch('/api/admin/stats');
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          setStats(statsData);
+        }
+      }
+    } catch (err) {
+      setSeedResult({
+        success: false,
+        message: 'Error de conexion',
+        error: err instanceof Error ? err.message : 'Error desconocido'
+      });
+    } finally {
+      setIsSeedingCategories(false);
+    }
+  };
 
   return (
     <AdminLayoutWrapper>
@@ -140,6 +181,79 @@ export default function AdminDashboardPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Database & Categories Management */}
+      <div className="mb-8">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Base de datos y categorias</h2>
+
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <p className="text-sm text-gray-700">
+                {stats?.categories?.length === 0
+                  ? 'No hay categorias en la base de datos. Ejecuta el seed para crearlas.'
+                  : `${stats?.categories?.length || 0} categorias encontradas en la base de datos.`}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Categorias esperadas: Accesorio, BathCloth, Courtain, Living, Lounge, TableCloth
+              </p>
+            </div>
+            <button
+              onClick={handleSeedCategories}
+              disabled={isSeedingCategories}
+              className="inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSeedingCategories ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Creando categorias...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Crear/Verificar Categorias
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Seed Result */}
+          {seedResult && (
+            <div className={`mt-4 p-4 rounded-lg ${seedResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+              <p className={`text-sm font-medium ${seedResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                {seedResult.message || seedResult.error}
+              </p>
+              {seedResult.details && (
+                <p className="text-xs text-red-600 mt-1">
+                  Detalles: {seedResult.details}
+                </p>
+              )}
+              {seedResult.hint && (
+                <p className="text-xs text-red-600 mt-1">
+                  Sugerencia: {seedResult.hint}
+                </p>
+              )}
+              {seedResult.results && seedResult.results.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-600 mb-1">Resultados:</p>
+                  <ul className="text-xs space-y-1">
+                    {seedResult.results.map((result, index) => (
+                      <li key={index} className={`${result.status === 'created' ? 'text-green-600' : result.status === 'exists' ? 'text-gray-600' : 'text-red-600'}`}>
+                        {result.category}: {result.status === 'created' ? 'Creada' : result.status === 'exists' ? 'Ya existia' : `Error - ${result.error}`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Quick Actions */}
