@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Breadcrumb from '@/components/Breadcrumb'
 import { DbProduct } from '@/types/database'
+import { useCart } from '@/context/CartContext'
 
 interface ProductDetailViewProps {
   product: DbProduct
@@ -13,6 +14,9 @@ interface ProductDetailViewProps {
 export default function ProductDetailView({ product }: ProductDetailViewProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({})
+  const [quantity, setQuantity] = useState(1)
+  const [addedToCart, setAddedToCart] = useState(false)
+  const { addToCart } = useCart()
 
   const breadcrumbItems = [
     { label: 'Inicio', href: '/' },
@@ -35,6 +39,24 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
       ...prev,
       [variantName]: option
     }))
+  }
+
+  const decreaseQuantity = () => {
+    if (quantity > 1) {
+      setQuantity(quantity - 1)
+    }
+  }
+
+  const increaseQuantity = () => {
+    if (quantity < product.stock) {
+      setQuantity(quantity + 1)
+    }
+  }
+
+  const handleAddToCart = () => {
+    addToCart(product, quantity, selectedVariants)
+    setAddedToCart(true)
+    setTimeout(() => setAddedToCart(false), 2000)
   }
 
   return (
@@ -168,25 +190,66 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
 
             {/* Stock indicator */}
             {product.stock > 0 ? (
-              <p className="text-sm text-green-600 mb-4">
+              <p className="text-sm text-green-600 mb-6">
                 En stock ({product.stock} disponibles)
               </p>
             ) : (
-              <p className="text-sm text-red-600 mb-4">
+              <p className="text-sm text-red-600 mb-6">
                 Agotado
               </p>
             )}
 
+            {/* Quantity Selector */}
+            {product.stock > 0 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-900 mb-3">
+                  Cantidad
+                </label>
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={decreaseQuantity}
+                    disabled={quantity <= 1}
+                    className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Disminuir cantidad"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                    </svg>
+                  </button>
+                  <span className="text-lg font-medium text-gray-900 w-12 text-center">
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={increaseQuantity}
+                    disabled={quantity >= product.stock}
+                    className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Aumentar cantidad"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Add to Cart Button */}
             <button
+              onClick={handleAddToCart}
               disabled={product.stock <= 0}
-              className={`w-full py-4 text-sm tracking-wide rounded-lg transition-colors ${
+              className={`w-full py-4 text-sm tracking-wide rounded-lg transition-all ${
                 product.stock > 0
-                  ? 'bg-gray-900 text-white hover:bg-gray-800'
+                  ? addedToCart
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-900 text-white hover:bg-gray-800'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {product.stock > 0 ? 'Añadir al carrito' : 'Producto agotado'}
+              {product.stock > 0
+                ? addedToCart
+                  ? 'Añadido al carrito'
+                  : 'Añadir al carrito'
+                : 'Producto agotado'}
             </button>
 
             {/* Additional Info */}
