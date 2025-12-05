@@ -109,8 +109,29 @@ export async function PUT(
     return NextResponse.json(product);
   } catch (error) {
     console.error('Error updating product:', error);
+
+    // Extract detailed error message
+    let errorMessage = 'Error al actualizar producto';
+    let errorDetails = '';
+
+    if (error instanceof Error) {
+      errorDetails = error.message;
+
+      // Handle specific Prisma errors
+      if (error.message.includes('Foreign key constraint')) {
+        errorMessage = 'La categoría seleccionada no existe';
+      } else if (error.message.includes('Unique constraint')) {
+        errorMessage = 'Ya existe un producto con ese nombre o slug';
+      } else if (error.message.includes('Invalid')) {
+        errorMessage = 'Datos inválidos: revisa los campos del formulario';
+      }
+    }
+
     return NextResponse.json(
-      { error: 'Error al actualizar producto' },
+      {
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? errorDetails : undefined
+      },
       { status: 500 }
     );
   }

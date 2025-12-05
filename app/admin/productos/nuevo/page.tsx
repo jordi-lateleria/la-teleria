@@ -91,7 +91,9 @@ export default function NuevoProductoPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Error al crear producto');
+        const errorMsg = data.error || 'Error al crear producto';
+        const errorDetails = data.details ? ` (${data.details})` : '';
+        throw new Error(errorMsg + errorDetails);
       }
 
       router.push('/admin/productos');
