@@ -2,6 +2,7 @@
 
 import { CldUploadWidget, CloudinaryUploadWidgetResults } from 'next-cloudinary';
 import Image from 'next/image';
+import { useState, useEffect } from 'react';
 
 export interface UploadedImage {
   url: string;
@@ -16,6 +17,25 @@ interface ImageUploadProps {
 }
 
 export default function ImageUpload({ images, onImagesChange, maxImages = 10 }: ImageUploadProps) {
+  const [cloudinaryConfigured, setCloudinaryConfigured] = useState<boolean | null>(null);
+  const [configError, setConfigError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check if Cloudinary is properly configured
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName) {
+      console.error('[ImageUpload] Cloudinary configuration error: NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME is not set');
+      setConfigError('NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME no está configurada');
+      setCloudinaryConfigured(false);
+    } else {
+      console.log('[ImageUpload] Cloudinary configured with cloud name:', cloudName);
+      console.log('[ImageUpload] Upload preset:', uploadPreset || 'ml_default (fallback)');
+      setCloudinaryConfigured(true);
+    }
+  }, []);
+
   const handleUploadSuccess = (result: CloudinaryUploadWidgetResults) => {
     if (result.info && typeof result.info !== 'string') {
       const newImage: UploadedImage = {
@@ -58,6 +78,41 @@ export default function ImageUpload({ images, onImagesChange, maxImages = 10 }: 
           {images.length} / {maxImages} imágenes
         </span>
       </div>
+
+      {/* Cloudinary configuration warning */}
+      {cloudinaryConfigured === false && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-yellow-800">
+                Cloudinary no configurado
+              </h4>
+              <p className="text-sm text-yellow-700 mt-1">
+                Para habilitar la subida de imágenes, configure las siguientes variables de entorno:
+              </p>
+              <ul className="text-xs text-yellow-600 mt-2 space-y-1 font-mono">
+                <li>• NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME</li>
+                <li>• NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET (opcional)</li>
+              </ul>
+              {configError && (
+                <p className="text-xs text-red-600 mt-2">
+                  Error: {configError}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {cloudinaryConfigured === null && (
+        <div className="w-full py-8 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center">
+          <span className="text-sm text-gray-400">Verificando configuración...</span>
+        </div>
+      )}
 
       {/* Image Grid */}
       {images.length > 0 && (
@@ -145,8 +200,8 @@ export default function ImageUpload({ images, onImagesChange, maxImages = 10 }: 
         </div>
       )}
 
-      {/* Upload Button */}
-      {images.length < maxImages && (
+      {/* Upload Button - only show when Cloudinary is configured */}
+      {cloudinaryConfigured === true && images.length < maxImages && (
         <CldUploadWidget
           uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'ml_default'}
           options={{
