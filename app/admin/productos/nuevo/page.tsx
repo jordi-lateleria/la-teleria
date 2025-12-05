@@ -27,6 +27,7 @@ export default function NuevoProductoPage() {
     stock: '0',
     active: true,
   });
+  const [fieldError, setFieldError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCategories();
@@ -58,14 +59,17 @@ export default function NuevoProductoPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setFieldError(null);
 
     if (!formData.name.trim()) {
       setError('El nombre es obligatorio');
+      setFieldError('name');
       return;
     }
 
     if (!formData.price || parseFloat(formData.price) <= 0) {
       setError('El precio debe ser mayor que 0');
+      setFieldError('price');
       return;
     }
 
@@ -93,6 +97,9 @@ export default function NuevoProductoPage() {
         const data = await response.json();
         const errorMsg = data.error || 'Error al crear producto';
         const errorDetails = data.details ? ` (${data.details})` : '';
+        if (data.field) {
+          setFieldError(data.field);
+        }
         throw new Error(errorMsg + errorDetails);
       }
 
@@ -142,7 +149,9 @@ export default function NuevoProductoPage() {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent ${
+                fieldError === 'name' ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              }`}
               placeholder="Ej: Cojin de lino natural"
               required
             />
@@ -193,7 +202,9 @@ export default function NuevoProductoPage() {
               onChange={handleChange}
               step="0.01"
               min="0"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent ${
+                fieldError === 'price' ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              }`}
               placeholder="0.00"
               required
             />
@@ -227,7 +238,9 @@ export default function NuevoProductoPage() {
               name="categoryId"
               value={formData.categoryId}
               onChange={handleChange}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent bg-white"
+              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent bg-white ${
+                fieldError === 'categoryId' ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              }`}
             >
               <option value="">Seleccionar categoria</option>
               {categories.map((category) => (

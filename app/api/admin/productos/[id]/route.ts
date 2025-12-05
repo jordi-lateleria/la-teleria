@@ -46,9 +46,25 @@ export async function PUT(
     const body = await request.json();
     const { name, shortDescription, description, price, salePrice, categoryId, stock, active } = body;
 
-    if (!name || !price) {
+    // Validate required fields
+    if (!name || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json(
-        { error: 'El nombre y el precio son obligatorios' },
+        { error: 'El nombre es obligatorio', field: 'name' },
+        { status: 400 }
+      );
+    }
+
+    if (price === undefined || price === null || price === '') {
+      return NextResponse.json(
+        { error: 'El precio es obligatorio', field: 'price' },
+        { status: 400 }
+      );
+    }
+
+    const parsedPrice = parseFloat(price);
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      return NextResponse.json(
+        { error: 'El precio debe ser un número válido mayor o igual a 0', field: 'price' },
         { status: 400 }
       );
     }
@@ -65,9 +81,51 @@ export async function PUT(
       );
     }
 
+    // Validate categoryId if provided - must be a valid category ID from the database
+    if (categoryId && categoryId.trim() !== '') {
+      const categoryExists = await prisma.category.findUnique({
+        where: { id: categoryId }
+      });
+
+      if (!categoryExists) {
+        return NextResponse.json(
+          {
+            error: 'La categoría seleccionada no existe. Por favor, selecciona una categoría válida.',
+            field: 'categoryId',
+            details: `El ID de categoría "${categoryId}" no se encontró en la base de datos`
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate salePrice if provided
+    let parsedSalePrice = null;
+    if (salePrice !== undefined && salePrice !== null && salePrice !== '') {
+      parsedSalePrice = parseFloat(salePrice);
+      if (isNaN(parsedSalePrice) || parsedSalePrice < 0) {
+        return NextResponse.json(
+          { error: 'El precio de oferta debe ser un número válido mayor o igual a 0', field: 'salePrice' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate stock if provided
+    let parsedStock = existingProduct.stock;
+    if (stock !== undefined && stock !== null && stock !== '') {
+      parsedStock = parseInt(stock, 10);
+      if (isNaN(parsedStock) || parsedStock < 0) {
+        return NextResponse.json(
+          { error: 'El stock debe ser un número entero mayor o igual a 0', field: 'stock' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Generate new slug if name changed
     let slug = existingProduct.slug;
-    if (name !== existingProduct.name) {
+    if (name.trim() !== existingProduct.name) {
       slug = name
         .toLowerCase()
         .normalize('NFD')
@@ -91,14 +149,14 @@ export async function PUT(
     const product = await prisma.product.update({
       where: { id },
       data: {
-        name,
+        name: name.trim(),
         slug,
-        shortDescription: shortDescription || null,
-        description: description || '',
-        price: parseFloat(price),
-        salePrice: salePrice ? parseFloat(salePrice) : null,
-        categoryId: categoryId || null,
-        stock: stock !== undefined ? parseInt(stock) : existingProduct.stock,
+        shortDescription: shortDescription?.trim() || null,
+        description: description?.trim() || '',
+        price: parsedPrice,
+        salePrice: parsedSalePrice,
+        categoryId: categoryId?.trim() || null,
+        stock: parsedStock,
         active: active !== undefined ? active : existingProduct.active
       },
       include: {
@@ -122,8 +180,8 @@ export async function PUT(
         errorMessage = 'La categoría seleccionada no existe';
       } else if (error.message.includes('Unique constraint')) {
         errorMessage = 'Ya existe un producto con ese nombre o slug';
-      } else if (error.message.includes('Invalid')) {
-        errorMessage = 'Datos inválidos: revisa los campos del formulario';
+      } else if (error.message.includes('Invalid `prisma')) {
+        errorMessage = 'Error de base de datos: verifica que todos los campos tengan el formato correcto';
       }
     }
 
