@@ -5,9 +5,42 @@ import Link from 'next/link'
 import Header from '@/components/Header'
 import { useCart } from '@/context/CartContext'
 
+interface ShippingFormData {
+  nombre: string
+  email: string
+  telefono: string
+  direccion: string
+  codigoPostal: string
+  ciudad: string
+  provincia: string
+}
+
+interface FormErrors {
+  nombre?: string
+  email?: string
+  telefono?: string
+  direccion?: string
+  codigoPostal?: string
+  ciudad?: string
+  provincia?: string
+}
+
+const initialFormData: ShippingFormData = {
+  nombre: '',
+  email: '',
+  telefono: '',
+  direccion: '',
+  codigoPostal: '',
+  ciudad: '',
+  provincia: ''
+}
+
 export default function CheckoutPage() {
   const { items, totalPrice } = useCart()
   const [isHydrated, setIsHydrated] = useState(false)
+  const [shippingData, setShippingData] = useState<ShippingFormData>(initialFormData)
+  const [errors, setErrors] = useState<FormErrors>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     setIsHydrated(true)
@@ -22,6 +55,86 @@ export default function CheckoutPage() {
   // Format price for display
   const formatPrice = (price: number) => {
     return price.toFixed(2).replace('.', ',') + ' €'
+  }
+
+  // Validation functions
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const validateField = (name: keyof ShippingFormData, value: string): string | undefined => {
+    if (!value.trim()) {
+      return 'Este campo es obligatorio'
+    }
+
+    if (name === 'email' && !validateEmail(value)) {
+      return 'Por favor, introduce un email válido'
+    }
+
+    if (name === 'telefono' && !/^[0-9+\s()-]{9,}$/.test(value.trim())) {
+      return 'Por favor, introduce un teléfono válido'
+    }
+
+    if (name === 'codigoPostal' && !/^\d{5}$/.test(value.trim())) {
+      return 'El código postal debe tener 5 dígitos'
+    }
+
+    return undefined
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {}
+    let isValid = true
+
+    ;(Object.keys(shippingData) as (keyof ShippingFormData)[]).forEach((field) => {
+      const error = validateField(field, shippingData[field])
+      if (error) {
+        newErrors[field] = error
+        isValid = false
+      }
+    })
+
+    setErrors(newErrors)
+    return isValid
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setShippingData((prev) => ({
+      ...prev,
+      [name]: value
+    }))
+
+    // Clear error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: undefined
+      }))
+    }
+  }
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setTouched((prev) => ({
+      ...prev,
+      [name]: true
+    }))
+
+    const error = validateField(name as keyof ShippingFormData, value)
+    if (error) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: error
+      }))
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const isFormValid = (): boolean => {
+    return Object.values(shippingData).every((value) => value.trim() !== '')
   }
 
   if (!isHydrated) {
@@ -127,6 +240,169 @@ export default function CheckoutPage() {
               <div className="flex justify-between text-lg font-medium text-gray-900 pt-2">
                 <span>Total</span>
                 <span>{formatPrice(total)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Shipping Form */}
+          <div className="bg-gray-50 rounded-lg p-6 mb-8">
+            <h2 className="text-lg font-medium text-gray-900 mb-6">Datos de envío</h2>
+
+            <div className="space-y-4">
+              {/* Nombre */}
+              <div>
+                <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 mb-1">
+                  Nombre completo <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="nombre"
+                  name="nombre"
+                  value={shippingData.nombre}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 outline-none transition-colors ${
+                    errors.nombre && touched.nombre ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                  placeholder="Tu nombre completo"
+                />
+                {errors.nombre && touched.nombre && (
+                  <p className="mt-1 text-sm text-red-600">{errors.nombre}</p>
+                )}
+              </div>
+
+              {/* Email y Teléfono */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={shippingData.email}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 outline-none transition-colors ${
+                      errors.email && touched.email ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
+                    placeholder="tu@email.com"
+                  />
+                  {errors.email && touched.email && (
+                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="telefono" className="block text-sm font-medium text-gray-700 mb-1">
+                    Teléfono <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    id="telefono"
+                    name="telefono"
+                    value={shippingData.telefono}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 outline-none transition-colors ${
+                      errors.telefono && touched.telefono ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
+                    placeholder="600 000 000"
+                  />
+                  {errors.telefono && touched.telefono && (
+                    <p className="mt-1 text-sm text-red-600">{errors.telefono}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Dirección */}
+              <div>
+                <label htmlFor="direccion" className="block text-sm font-medium text-gray-700 mb-1">
+                  Dirección <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="direccion"
+                  name="direccion"
+                  value={shippingData.direccion}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 outline-none transition-colors ${
+                    errors.direccion && touched.direccion ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                  placeholder="Calle, número, piso..."
+                />
+                {errors.direccion && touched.direccion && (
+                  <p className="mt-1 text-sm text-red-600">{errors.direccion}</p>
+                )}
+              </div>
+
+              {/* Código Postal, Ciudad, Provincia */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label htmlFor="codigoPostal" className="block text-sm font-medium text-gray-700 mb-1">
+                    Código postal <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="codigoPostal"
+                    name="codigoPostal"
+                    value={shippingData.codigoPostal}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    maxLength={5}
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 outline-none transition-colors ${
+                      errors.codigoPostal && touched.codigoPostal ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
+                    placeholder="08001"
+                  />
+                  {errors.codigoPostal && touched.codigoPostal && (
+                    <p className="mt-1 text-sm text-red-600">{errors.codigoPostal}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="ciudad" className="block text-sm font-medium text-gray-700 mb-1">
+                    Ciudad <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="ciudad"
+                    name="ciudad"
+                    value={shippingData.ciudad}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 outline-none transition-colors ${
+                      errors.ciudad && touched.ciudad ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
+                    placeholder="Barcelona"
+                  />
+                  {errors.ciudad && touched.ciudad && (
+                    <p className="mt-1 text-sm text-red-600">{errors.ciudad}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="provincia" className="block text-sm font-medium text-gray-700 mb-1">
+                    Provincia <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="provincia"
+                    name="provincia"
+                    value={shippingData.provincia}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-400 outline-none transition-colors ${
+                      errors.provincia && touched.provincia ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
+                    placeholder="Barcelona"
+                  />
+                  {errors.provincia && touched.provincia && (
+                    <p className="mt-1 text-sm text-red-600">{errors.provincia}</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
