@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import AdminLayoutWrapper from '../../../components/AdminLayoutWrapper';
 import ImageUpload, { UploadedImage } from '../../../components/ImageUpload';
@@ -33,8 +33,9 @@ interface Product {
   images: ProductImage[];
 }
 
-export default function EditarProductoPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+export default function EditarProductoPage() {
+  const params = useParams();
+  const productId = params.id as string;
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,9 +57,11 @@ export default function EditarProductoPage({ params }: { params: Promise<{ id: s
   });
 
   useEffect(() => {
-    fetchCategories();
-    fetchProduct();
-  }, [resolvedParams.id]);
+    if (productId) {
+      fetchCategories();
+      fetchProduct();
+    }
+  }, [productId]);
 
   const fetchCategories = async () => {
     try {
@@ -74,7 +77,7 @@ export default function EditarProductoPage({ params }: { params: Promise<{ id: s
 
   const fetchProduct = async () => {
     try {
-      const response = await fetch(`/api/admin/productos/${resolvedParams.id}`);
+      const response = await fetch(`/api/admin/productos/${productId}`);
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error('Producto no encontrado');
@@ -140,7 +143,7 @@ export default function EditarProductoPage({ params }: { params: Promise<{ id: s
     setIsSaving(true);
 
     try {
-      const response = await fetch(`/api/admin/productos/${resolvedParams.id}`, {
+      const response = await fetch(`/api/admin/productos/${productId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -182,7 +185,7 @@ export default function EditarProductoPage({ params }: { params: Promise<{ id: s
 
   const handleDelete = async () => {
     try {
-      const response = await fetch(`/api/admin/productos/${resolvedParams.id}`, {
+      const response = await fetch(`/api/admin/productos/${productId}`, {
         method: 'DELETE',
       });
 
