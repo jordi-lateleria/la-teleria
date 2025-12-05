@@ -153,24 +153,46 @@ export async function POST(request: NextRequest) {
     // Extract detailed error message
     let errorMessage = 'Error al crear producto';
     let errorDetails = '';
+    let errorCode = '';
 
     if (error instanceof Error) {
       errorDetails = error.message;
 
-      // Handle specific Prisma errors
-      if (error.message.includes('Foreign key constraint')) {
-        errorMessage = 'La categoría seleccionada no existe';
-      } else if (error.message.includes('Unique constraint')) {
-        errorMessage = 'Ya existe un producto con ese nombre o slug';
-      } else if (error.message.includes('Invalid `prisma')) {
-        errorMessage = 'Error de base de datos: verifica que todos los campos tengan el formato correcto';
+      // Check if it's a Prisma error with a code
+      const prismaError = error as { code?: string; meta?: Record<string, unknown> };
+      if (prismaError.code) {
+        errorCode = prismaError.code;
+        console.error('Prisma error code:', prismaError.code);
+        console.error('Prisma error meta:', prismaError.meta);
       }
+
+      // Handle specific Prisma errors
+      if (error.message.includes('Foreign key constraint') || prismaError.code === 'P2003') {
+        errorMessage = 'La categoria seleccionada no existe. Ejecuta el seed de categorias primero.';
+      } else if (error.message.includes('Unique constraint') || prismaError.code === 'P2002') {
+        errorMessage = 'Ya existe un producto con ese nombre o slug';
+      } else if (error.message.includes('Invalid `prisma') || error.message.includes('prisma')) {
+        errorMessage = 'Error de base de datos: verifica que todos los campos tengan el formato correcto';
+      } else if (prismaError.code === 'P1001' || error.message.includes('connect')) {
+        errorMessage = 'No se puede conectar a la base de datos. Verifica DATABASE_URL';
+      } else if (prismaError.code === 'P2021' || error.message.includes('does not exist')) {
+        errorMessage = 'La tabla no existe. Ejecuta "prisma db push" para crear el esquema';
+      }
+
+      // Log the full error for debugging
+      console.error('Full error object:', JSON.stringify({
+        message: error.message,
+        code: errorCode,
+        stack: error.stack
+      }, null, 2));
     }
 
     return NextResponse.json(
       {
         error: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? errorDetails : undefined
+        details: errorDetails,
+        code: errorCode || undefined,
+        hint: 'Si el problema persiste, verifica: 1) DATABASE_URL esta configurado 2) Las categorias existen (usa /api/admin/seed-categories) 3) El schema esta sincronizado (prisma db push)'
       },
       { status: 500 }
     );
