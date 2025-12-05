@@ -136,7 +136,9 @@ export default function EditarProductoPage({ params }: { params: Promise<{ id: s
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Error al actualizar producto');
+        const errorMsg = data.error || 'Error al actualizar producto';
+        const errorDetails = data.details ? ` (${data.details})` : '';
+        throw new Error(errorMsg + errorDetails);
       }
 
       router.push('/admin/productos');
