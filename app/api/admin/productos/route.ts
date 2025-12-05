@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, shortDescription, description, price, salePrice, categoryId, stock, active } = body;
+    const { name, shortDescription, description, price, salePrice, categoryId, stock, active, images } = body;
 
     // Validate required fields
     if (!name || typeof name !== 'string' || !name.trim()) {
@@ -139,10 +139,22 @@ export async function POST(request: NextRequest) {
         salePrice: parsedSalePrice,
         categoryId: categoryId?.trim() || null,
         stock: parsedStock,
-        active: active !== undefined ? active : true
+        active: active !== undefined ? active : true,
+        images: images && Array.isArray(images) && images.length > 0
+          ? {
+              create: images.map((img: { url: string; alt?: string; order?: number }, index: number) => ({
+                url: img.url,
+                alt: img.alt || null,
+                order: img.order ?? index,
+              })),
+            }
+          : undefined,
       },
       include: {
-        category: true
+        category: true,
+        images: {
+          orderBy: { order: 'asc' },
+        },
       }
     });
 

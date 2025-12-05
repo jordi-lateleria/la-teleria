@@ -44,7 +44,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, shortDescription, description, price, salePrice, categoryId, stock, active } = body;
+    const { name, shortDescription, description, price, salePrice, categoryId, stock, active, images } = body;
 
     // Validate required fields
     if (!name || typeof name !== 'string' || !name.trim()) {
@@ -146,6 +146,14 @@ export async function PUT(
       }
     }
 
+    // Handle images update: delete existing and create new ones
+    if (images !== undefined && Array.isArray(images)) {
+      // Delete all existing images for this product
+      await prisma.productImage.deleteMany({
+        where: { productId: id }
+      });
+    }
+
     const product = await prisma.product.update({
       where: { id },
       data: {
@@ -157,10 +165,22 @@ export async function PUT(
         salePrice: parsedSalePrice,
         categoryId: categoryId?.trim() || null,
         stock: parsedStock,
-        active: active !== undefined ? active : existingProduct.active
+        active: active !== undefined ? active : existingProduct.active,
+        images: images !== undefined && Array.isArray(images) && images.length > 0
+          ? {
+              create: images.map((img: { url: string; alt?: string; order?: number }, index: number) => ({
+                url: img.url,
+                alt: img.alt || null,
+                order: img.order ?? index,
+              })),
+            }
+          : undefined,
       },
       include: {
-        category: true
+        category: true,
+        images: {
+          orderBy: { order: 'asc' },
+        },
       }
     });
 

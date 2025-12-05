@@ -4,11 +4,19 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AdminLayoutWrapper from '../../../components/AdminLayoutWrapper';
+import ImageUpload, { UploadedImage } from '../../../components/ImageUpload';
 
 interface Category {
   id: string;
   name: string;
   slug: string;
+}
+
+interface ProductImage {
+  id: string;
+  url: string;
+  alt: string | null;
+  order: number;
 }
 
 interface Product {
@@ -22,6 +30,7 @@ interface Product {
   active: boolean;
   categoryId: string | null;
   category: Category | null;
+  images: ProductImage[];
 }
 
 export default function EditarProductoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,6 +42,7 @@ export default function EditarProductoPage({ params }: { params: Promise<{ id: s
   const [error, setError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [images, setImages] = useState<UploadedImage[]>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -83,6 +93,15 @@ export default function EditarProductoPage({ params }: { params: Promise<{ id: s
         stock: product.stock?.toString() || '0',
         active: product.active ?? true,
       });
+
+      // Load existing images
+      if (product.images && product.images.length > 0) {
+        setImages(product.images.map((img) => ({
+          url: img.url,
+          publicId: img.id, // Use id as publicId for existing images
+          alt: img.alt || '',
+        })));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -135,6 +154,11 @@ export default function EditarProductoPage({ params }: { params: Promise<{ id: s
           categoryId: formData.categoryId || null,
           stock: formData.stock,
           active: formData.active,
+          images: images.map((img, index) => ({
+            url: img.url,
+            alt: img.alt || null,
+            order: index,
+          })),
         }),
       });
 
@@ -258,6 +282,15 @@ export default function EditarProductoPage({ params }: { params: Promise<{ id: s
               rows={4}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent resize-none"
               placeholder="Descripcion detallada del producto"
+            />
+          </div>
+
+          {/* Images */}
+          <div className="md:col-span-2">
+            <ImageUpload
+              images={images}
+              onImagesChange={setImages}
+              maxImages={10}
             />
           </div>
 
