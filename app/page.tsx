@@ -1,4 +1,5 @@
 import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 
 export default function Home() {
   return (
@@ -67,14 +68,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-100 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-sm text-gray-500">
-            © 2025 La Teleria. Textiles premium desde Girona, Catalunya.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }
