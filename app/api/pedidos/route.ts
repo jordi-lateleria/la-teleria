@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { sendOrderConfirmationEmail } from '@/lib/resend';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +82,29 @@ export async function POST(request: Request) {
       include: {
         items: true,
       },
+    });
+
+    // Send order confirmation email (non-blocking)
+    sendOrderConfirmationEmail({
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      items: order.items.map((item) => ({
+        productName: item.productName,
+        quantity: item.quantity,
+        price: item.price,
+        selectedVariants: item.selectedVariants || undefined,
+      })),
+      subtotal: order.subtotal,
+      iva: order.iva,
+      total: order.total,
+      shippingAddress: order.shippingAddress,
+      shippingCity: order.shippingCity,
+      shippingPostalCode: order.shippingPostalCode,
+      shippingProvince: order.shippingProvince,
+    }).catch((error) => {
+      // Log error but don't fail the order creation
+      console.error('Failed to send order confirmation email:', error);
     });
 
     return NextResponse.json({
