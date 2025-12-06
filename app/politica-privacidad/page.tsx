@@ -111,7 +111,7 @@ export default function PoliticaPrivacidadPage() {
             <div>
               <h2 className="text-xl font-medium text-gray-900 mb-4">8. Cookies</h2>
               <p className="text-gray-600">
-                Nuestra web utiliza cookies para mejorar su experiencia de navegacion. Las cookies son pequenos archivos de texto que se almacenan en su dispositivo. Utilizamos cookies tecnicas necesarias para el funcionamiento de la web y cookies analiticas para comprender como los usuarios interactuan con nuestro sitio. Puede configurar su navegador para rechazar las cookies, aunque esto puede afectar a algunas funcionalidades de la web.
+                Nuestra web utiliza cookies para mejorar su experiencia de navegacion. Las cookies son pequenos archivos de texto que se almacenan en su dispositivo. Utilizamos cookies tecnicas necesarias para el funcionamiento de la web y cookies analiticas para comprender como los usuarios interactuan con nuestro sitio. Puede configurar su navegador para rechazar las cookies, aunque esto puede afectar a algunas funcionalidades de la web. Para mas informacion, consulte nuestra <a href="/politica-cookies" className="text-gray-900 hover:underline">Politica de Cookies</a>.
               </p>
             </div>
 
