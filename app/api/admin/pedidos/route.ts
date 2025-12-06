@@ -1,6 +1,9 @@
 import { NextResponse, NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 
+// Force dynamic rendering to avoid static generation errors
+export const dynamic = 'force-dynamic';
+
 // GET /api/admin/pedidos - List all orders with optional filters
 export async function GET(request: NextRequest) {
   try {
