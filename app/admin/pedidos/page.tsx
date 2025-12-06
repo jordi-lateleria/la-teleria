@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import AdminLayoutWrapper from '../components/AdminLayoutWrapper';
 
 interface OrderItem {
@@ -46,6 +47,7 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function PedidosPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -189,7 +191,11 @@ export default function PedidosPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={order.id}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => router.push(`/admin/pedidos/${order.id}`)}
+                  >
                     <td className="px-4 py-3">
                       <p className="text-sm font-medium text-gray-900">{order.orderNumber}</p>
                       <p className="text-xs text-gray-500 sm:hidden">{formatDate(order.createdAt)}</p>
